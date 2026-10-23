@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Pengingat jadwal obat pribadi — offline-first, privacy-focused." />
+  <meta name="theme-color" content="#6366f1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MedReminder" />
+
+  <title>Medicine Reminder</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="./manifest.json" />
+
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════
+       INSTALL BANNER
+  ══════════════════════════════════════════ -->
+  <div id="install-banner" class="install-banner hidden" role="banner" aria-label="Install app">
+    <div class="install-banner__content">
+      <span class="install-banner__icon">💊</span>
+      <div class="install-banner__text">
+        <strong>Install Medicine Reminder</strong>
+        <span>Akses lebih cepat dari home screen</span>
+      </div>
+    </div>
+    <div class="install-banner__actions">
+      <button id="btn-install" class="btn btn--primary btn--sm">Install</button>
+      <button id="btn-install-dismiss" class="btn btn--ghost btn--sm" aria-label="Tutup">✕</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       APP WRAPPER
+  ══════════════════════════════════════════ -->
+  <div id="app" class="app">
+
+    <!-- ── TOP BAR ──────────────────────────── -->
+    <header class="topbar" role="banner">
+      <div class="topbar__left">
+        <button id="btn-profile-menu" class="topbar__avatar" aria-label="Pilih profil" aria-haspopup="true">
+          <span id="active-profile-avatar">👤</span>
+        </button>
+        <div class="topbar__title-group">
+          <h1 class="topbar__title">Medicine Reminder</h1>
+          <p id="active-profile-name" class="topbar__subtitle">Profil Saya</p>
+        </div>
+      </div>
+      <div class="topbar__right">
+        <button id="btn-notif-toggle" class="topbar__icon-btn" aria-label="Aktifkan notifikasi" title="Notifikasi">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── PROFILE DROPDOWN ──────────────────── -->
+    <div id="profile-dropdown" class="dropdown hidden" role="menu" aria-label="Daftar profil">
+      <div class="dropdown__header">
+        <span>Profil</span>
+        <button id="btn-add-profile" class="btn btn--ghost btn--sm">+ Tambah</button>
+      </div>
+      <ul id="profile-list" class="dropdown__list" role="none"></ul>
+    </div>
+    <div id="dropdown-backdrop" class="backdrop hidden" aria-hidden="true"></div>
+
+    <!-- ── MAIN CONTENT ──────────────────────── -->
+    <main id="main-content" class="main" role="main">
+
+      <!-- ─── VIEW: TODAY ─────────────────────── -->
+      <section id="view-today" class="view active" aria-label="Jadwal hari ini">
+
+        <!-- Date Header -->
+        <div class="date-header">
+          <div class="date-header__left">
+            <p id="today-label" class="date-header__day">Hari ini</p>
+            <h2 id="today-date" class="date-header__date">—</h2>
+          </div>
+          <div class="date-header__stats" aria-label="Statistik hari ini">
+            <div class="stat-chip stat-chip--done">
+              <span id="stat-done">0</span>
+              <span>selesai</span>
+            </div>
+            <div class="stat-chip stat-chip--pending">
+              <span id="stat-pending">0</span>
+              <span>menunggu</span>
+            </div>
+            <div class="stat-chip stat-chip--missed">
+              <span id="stat-missed">0</span>
+              <span>terlewat</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Compliance Bar -->
+        <div class="compliance-bar" role="progressbar" aria-label="Kepatuhan hari ini" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="compliance-fill" class="compliance-bar__fill"></div>
+        </div>
+
+        <!-- Schedule List -->
+        <div id="today-list" class="schedule-list" role="list" aria-label="Jadwal obat hari ini">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="today-empty" class="empty-state hidden" role="status">
+          <div class="empty-state__icon">💊</div>
+          <h3 class="empty-state__title">Belum ada jadwal</h3>
+          <p class="empty-state__desc">Tambahkan jadwal obat pertamamu untuk memulai.</p>
+          <button class="btn btn--primary btn--fab-inline" id="btn-add-from-empty">+ Tambah Jadwal</button>
+        </div>
+
+      </section>
+
+      <!-- ─── VIEW: HISTORY ───────────────────── -->
+      <section id="view-history" class="view hidden" aria-label="Riwayat konsumsi obat">
+
+        <div class="section-header">
+          <h2 class="section-header__title">Riwayat</h2>
+          <select id="history-filter" class="select select--sm" aria-label="Filter riwayat">
+            <option value="7">7 hari</option>
+            <option value="14">14 hari</option>
+            <option value="30">30 hari</option>
+          </select>
+        </div>
+
+        <!-- Compliance Summary -->
+        <div class="compliance-card" aria-label="Ringkasan kepatuhan">
+          <div class="compliance-card__value" id="history-compliance-pct">—%</div>
+          <div class="compliance-card__label">kepatuhan keseluruhan</div>
+          <div class="compliance-bar mt-2" role="progressbar" aria-label="Kepatuhan keseluruhan" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="history-compliance-fill" class="compliance-bar__fill"></div>
+          </div>
+        </div>
+
+        <div id="history-list" class="history-list" role="list" aria-label="Riwayat konsumsi obat">
+          <!-- Populated by JS -->
+        </div>
+
+        <div id="history-empty" class="empty-state hidden" role="status">
+          <div class="empty-state__icon">📋</div>
+          <h3 class="empty-state__title">Belum ada riwayat</h3>
+          <p class="empty-state__desc">Riwayat akan muncul setelah kamu menandai obat.</p>
+        </div>
+
+      </section>
+
+      <!-- ─── VIEW: MEDICINES ─────────────────── -->
+      <section id="view-medicines" class="view hidden" aria-label="Daftar obat dan stok">
+
+        <div class="section-header">
+          <h2 class="section-header__title">Obat Saya</h2>
+          <button id="btn-add-medicine" class="btn btn--primary btn--sm">+ Tambah</button>
+        </div>
+
+        <div id="medicines-list" class="medicines-list" role="list" aria-label="Daftar obat">
+          <!-- Populated by JS -->
+        </div>
+
+        <div id="medicines-empty" class="empty-state hidden" role="status">
+          <div class="empty-state__icon">🗂️</div>
+          <h3 class="empty-state__title">Belum ada obat</h3>
+          <p class="empty-state__desc">Tambahkan obat untuk membuat jadwal pengingat.</p>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- ── BOTTOM NAV ────────────────────────── -->
+    <nav class="bottom-nav" role="navigation" aria-label="Navigasi utama">
+      <button class="bottom-nav__item active" data-view="today" aria-label="Hari ini" aria-current="page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>Hari ini</span>
+      </button>
+      <button class="bottom-nav__item" data-view="history" aria-label="Riwayat">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Riwayat</span>
+      </button>
+      <button class="bottom-nav__item bottom-nav__item--fab" id="btn-fab" aria-label="Tambah jadwal obat">
+        <span class="bottom-nav__fab-inner" aria-hidden="true">+</span>
+      </button>
+      <button class="bottom-nav__item" data-view="medicines" aria-label="Obat saya">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        <span>Obat</span>
+      </button>
+      <button class="bottom-nav__item" id="btn-nav-settings" aria-label="Pengaturan">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Setelan</span>
+      </button>
+    </nav>
+
+  </div><!-- /#app -->
+
+  <!-- ══════════════════════════════════════════
+       MODAL: ADD / EDIT SCHEDULE
+  ══════════════════════════════════════════ -->
+  <div id="modal-schedule" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-schedule-title">
+    <div class="modal__backdrop" id="modal-schedule-backdrop"></div>
+    <div class="modal__sheet">
+      <div class="modal__handle" aria-hidden="true"></div>
+
+      <div class="modal__header">
+        <h2 id="modal-schedule-title" class="modal__title">Tambah Jadwal</h2>
+        <button id="btn-modal-schedule-close" class="modal__close" aria-label="Tutup modal">✕</button>
+      </div>
+
+      <form id="form-schedule" class="form" novalidate autocomplete="off">
+        <input type="hidden" id="field-schedule-id" />
+
+        <!-- Medicine picker -->
+        <div class="form__group">
+          <label class="form__label" for="field-medicine-select">Obat <span aria-hidden="true">*</span></label>
+          <div class="input-with-action">
+            <select id="field-medicine-select" class="select" required aria-required="true">
+              <option value="">-- Pilih obat --</option>
+            </select>
+            <button type="button" id="btn-quick-add-medicine" class="btn btn--ghost btn--sm" aria-label="Tambah obat baru">+ Baru</button>
+          </div>
+          <p class="form__error hidden" id="err-medicine" role="alert">Pilih obat terlebih dahulu.</p>
+        </div>
+
+        <!-- Dose -->
+        <div class="form__row">
+          <div class="form__group form__group--flex">
+            <label class="form__label" for="field-dose-amount">Dosis <span aria-hidden="true">*</span></label>
+            <input type="number" id="field-dose-amount" class="input" min="0.25" max="99" step="0.25" value="1" required aria-required="true" placeholder="1" />
+            <p class="form__error hidden" id="err-dose" role="alert">Masukkan dosis yang valid.</p>
+          </div>
+          <div class="form__group form__group--flex">
+            <label class="form__label" for="field-dose-unit">Satuan</label>
+            <select id="field-dose-unit" class="select">
+              <option value="tablet">tablet</option>
+              <option value="kapsul">kapsul</option>
+              <option value="ml">ml</option>
+              <option value="tetes">tetes</option>
+              <option value="sendok">sendok</option>
+              <option value="sachet">sachet</option>
+              <option value="lainnya">lainnya</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Times -->
+        <div class="form__group">
+          <label class="form__label">Waktu <span aria-hidden="true">*</span></label>
+          <div id="times-container" class="times-container">
+            <div class="time-entry" data-index="0">
+              <input type="time" class="input input--time time-input" value="08:00" required aria-label="Waktu ke-1" />
+              <button type="button" class="btn btn--ghost btn--icon btn-remove-time hidden" aria-label="Hapus waktu ini">✕</button>
+            </div>
+          </div>
+          <button type="button" id="btn-add-time" class="btn btn--ghost btn--sm mt-1">+ Tambah waktu</button>
+        </div>
+
+        <!-- Frequency -->
+        <div class="form__group">
+          <label class="form__label" for="field-frequency">Frekuensi</label>
+          <select id="field-frequency" class="select">
+            <option value="daily">Setiap hari</option>
+            <option value="specific_days">Hari tertentu</option>
+            <option value="interval">Setiap N hari</option>
+          </select>
+        </div>
+
+        <!-- Specific days (shown when frequency = specific_days) -->
+        <div id="group-specific-days" class="form__group hidden" role="group" aria-label="Pilih hari">
+          <label class="form__label">Hari</label>
+          <div class="day-picker">
+            <label class="day-chip"><input type="checkbox" value="0" /><span>Min</span></label>
+            <label class="day-chip"><input type="checkbox" value="1" /><span>Sen</span></label>
+            <label class="day-chip"><input type="checkbox" value="2" /><span>Sel</span></label>
+            <label class="day-chip"><input type="checkbox" value="3" /><span>Rab</span></label>
+            <label class="day-chip"><input type="checkbox" value="4" /><span>Kam</span></label>
+            <label class="day-chip"><input type="checkbox" value="5" /><span>Jum</span></label>
+            <label class="day-chip"><input type="checkbox" value="6" /><span>Sab</span></label>
+          </div>
+          <p class="form__error hidden" id="err-days" role="alert">Pilih minimal satu hari.</p>
+        </div>
+
+        <!-- Interval (shown when frequency = interval) -->
+        <div id="group-interval" class="form__group hidden">
+          <label class="form__label" for="field-interval">Setiap berapa hari?</label>
+          <input type="number" id="field-interval" class="input" min="2" max="30" value="2" placeholder="2" />
+        </div>
+
+        <!-- Date range -->
+        <div class="form__row">
+          <div class="form__group form__group--flex">
+            <label class="form__label" for="field-start-date">Mulai <span aria-hidden="true">*</span></label>
+            <input type="date" id="field-start-date" class="input" required aria-required="true" />
+            <p class="form__error hidden" id="err-start" role="alert">Masukkan tanggal mulai.</p>
+          </div>
+          <div class="form__group form__group--flex">
+            <label class="form__label" for="field-end-date">Selesai</label>
+            <input type="date" id="field-end-date" class="input" placeholder="Tidak terbatas" />
+            <p class="form__error hidden" id="err-end" role="alert">Tanggal selesai harus setelah tanggal mulai.</p>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="form__group">
+          <label class="form__label" for="field-notes">Catatan</label>
+          <textarea id="field-notes" class="input input--textarea" rows="2" placeholder="Sesuai resep dokter, diminum setelah makan…" maxlength="200"></textarea>
+        </div>
+
+        <!-- Submit -->
+        <div class="form__actions">
+          <button type="button" id="btn-delete-schedule" class="btn btn--danger btn--sm hidden" aria-label="Hapus jadwal ini">Hapus Jadwal</button>
+          <button type="submit" class="btn btn--primary btn--full" id="btn-save-schedule">Simpan Jadwal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: ADD / EDIT MEDICINE
+  ══════════════════════════════════════════ -->
+  <div id="modal-medicine" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-medicine-title">
+    <div class="modal__backdrop" id="modal-medicine-backdrop"></div>
+    <div class="modal__sheet">
+      <div class="modal__handle" aria-hidden="true"></div>
+
+      <div class="modal__header">
+        <h2 id="modal-medicine-title" class="modal__title">Tambah Obat</h2>
+        <button id="btn-modal-medicine-close" class="modal__close" aria-label="Tutup modal">✕</button>
+      </div>
+
+      <form id="form-medicine" class="form" novalidate autocomplete="off">
+        <input type="hidden" id="field-medicine-id" />
+
+        <div class="form__group">
+          <label class="form__label" for="field-medicine-name">Nama Obat <span aria-hidden="true">*</span></label>
+          <input type="text" id="field-medicine-name" class="input" required aria-required="true" placeholder="Paracetamol, Amoxicillin…" maxlength="80" />
+          <p class="form__error hidden" id="err-medicine-name" role="alert">Nama obat tidak boleh kosong.</p>
+        </div>
+
+        <div class="form__row">
+          <div class="form__group form__group--flex">
+            <label class="form__label" for="field-medicine-color">Warna</label>
+            <div class="color-picker">
+              <input type="color" id="field-medicine-color" class="input input--color" value="#6366f1" aria-label="Pilih warna obat" />
+            </div>
+          </div>
+          <div class="form__group form__group--flex">
+            <label class="form__label" for="field-medicine-icon">Ikon</label>
+            <select id="field-medicine-icon" class="select">
+              <option value="💊">💊 Kapsul</option>
+              <option value="💉">💉 Injeksi</option>
+              <option value="🩺">🩺 Umum</option>
+              <option value="🧴">🧴 Sirup</option>
+              <option value="🩹">🩹 Lainnya</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Stock -->
+        <div class="form__group">
+          <label class="form__label" for="field-stock">Stok (opsional)</label>
+          <div class="form__row">
+            <input type="number" id="field-stock" class="input" min="0" max="9999" step="1" placeholder="Contoh: 30" aria-label="Jumlah stok saat ini" />
+            <input type="number" id="field-stock-warn" class="input" min="1" max="999" step="1" placeholder="Peringatan di (contoh: 5)" aria-label="Peringatan stok rendah di angka" />
+          </div>
+          <p class="form__hint">Peringatan muncul saat stok ≤ angka peringatan.</p>
+        </div>
+
+        <div class="form__group">
+          <label class="form__label" for="field-medicine-notes">Catatan</label>
+          <input type="text" id="field-medicine-notes" class="input" placeholder="Nama generik, produsen…" maxlength="120" />
+        </div>
+
+        <div class="form__actions">
+          <button type="button" id="btn-delete-medicine" class="btn btn--danger btn--sm hidden">Hapus Obat</button>
+          <button type="submit" class="btn btn--primary btn--full" id="btn-save-medicine">Simpan Obat</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: ADD / EDIT PROFILE
+  ══════════════════════════════════════════ -->
+  <div id="modal-profile" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title">
+    <div class="modal__backdrop" id="modal-profile-backdrop"></div>
+    <div class="modal__sheet modal__sheet--sm">
+      <div class="modal__handle" aria-hidden="true"></div>
+
+      <div class="modal__header">
+        <h2 id="modal-profile-title" class="modal__title">Tambah Profil</h2>
+        <button id="btn-modal-profile-close" class="modal__close" aria-label="Tutup modal">✕</button>
+      </div>
+
+      <form id="form-profile" class="form" novalidate autocomplete="off">
+        <input type="hidden" id="field-profile-id" />
+
+        <div class="form__group">
+          <label class="form__label" for="field-profile-name">Nama <span aria-hidden="true">*</span></label>
+          <input type="text" id="field-profile-name" class="input" required placeholder="Contoh: Ayah, Ibu…" maxlength="40" />
+          <p class="form__error hidden" id="err-profile-name" role="alert">Nama profil tidak boleh kosong.</p>
+        </div>
+
+        <div class="form__group">
+          <label class="form__label" for="field-profile-avatar">Avatar</label>
+          <div class="avatar-picker" role="radiogroup" aria-label="Pilih avatar">
+            <label class="avatar-option"><input type="radio" name="avatar" value="👤" checked /><span>👤</span></label>
+            <label class="avatar-option"><input type="radio" name="avatar" value="👨" /><span>👨</span></label>
+            <label class="avatar-option"><input type="radio" name="avatar" value="👩" /><span>👩</span></label>
+            <label class="avatar-option"><input type="radio" name="avatar" value="👦" /><span>👦</span></label>
+            <label class="avatar-option"><input type="radio" name="avatar" value="👧" /><span>👧</span></label>
+            <label class="avatar-option"><input type="radio" name="avatar" value="👴" /><span>👴</span></label>
+            <label class="avatar-option"><input type="radio" name="avatar" value="👵" /><span>👵</span></label>
+          </div>
+        </div>
+
+        <div class="form__actions">
+          <button type="button" id="btn-delete-profile" class="btn btn--danger btn--sm hidden">Hapus Profil</button>
+          <button type="submit" class="btn btn--primary btn--full">Simpan Profil</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: SETTINGS
+  ══════════════════════════════════════════ -->
+  <div id="modal-settings" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-settings-title">
+    <div class="modal__backdrop" id="modal-settings-backdrop"></div>
+    <div class="modal__sheet">
+      <div class="modal__handle" aria-hidden="true"></div>
+
+      <div class="modal__header">
+        <h2 id="modal-settings-title" class="modal__title">Pengaturan</h2>
+        <button id="btn-modal-settings-close" class="modal__close" aria-label="Tutup modal">✕</button>
+      </div>
+
+      <div class="settings-list">
+
+        <div class="settings-section">
+          <h3 class="settings-section__title">Notifikasi</h3>
+          <label class="settings-row settings-row--toggle">
+            <div class="settings-row__info">
+              <span class="settings-row__label">Aktifkan pengingat</span>
+              <span class="settings-row__desc">Notifikasi otomatis saat jadwal tiba</span>
+            </div>
+            <div class="toggle" role="switch">
+              <input type="checkbox" id="setting-notif-enabled" class="toggle__input" />
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            </div>
+          </label>
+          <label class="settings-row settings-row--toggle">
+            <div class="settings-row__info">
+              <span class="settings-row__label">Pengingat tunda</span>
+              <span class="settings-row__desc">Ingatkan kembali setelah 10 menit</span>
+            </div>
+            <div class="toggle" role="switch">
+              <input type="checkbox" id="setting-snooze-enabled" class="toggle__input" />
+              <span class="toggle__track"><span class="toggle__thumb"></span></span>
+            </div>
+          </label>
+        </div>
+
+        <div class="settings-section">
+          <h3 class="settings-section__title">Tampilan</h3>
+          <div class="settings-row">
+            <div class="settings-row__info">
+              <span class="settings-row__label">Tema</span>
+            </div>
+            <select id="setting-theme" class="select select--sm">
+              <option value="dark">Gelap</option>
+              <option value="light">Terang</option>
+              <option value="system">Ikuti sistem</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3 class="settings-section__title">Data</h3>
+          <button id="btn-export-data" class="settings-row settings-row--btn">
+            <div class="settings-row__info">
+              <span class="settings-row__label">Ekspor data</span>
+              <span class="settings-row__desc">Unduh semua data sebagai JSON</span>
+            </div>
+            <span class="settings-row__arrow" aria-hidden="true">›</span>
+          </button>
+          <button id="btn-import-data" class="settings-row settings-row--btn">
+            <div class="settings-row__info">
+              <span class="settings-row__label">Impor data</span>
+              <span class="settings-row__desc">Muat ulang dari file JSON</span>
+            </div>
+            <span class="settings-row__arrow" aria-hidden="true">›</span>
+          </button>
+          <input type="file" id="input-import-file" accept=".json" class="hidden" aria-label="Pilih file JSON untuk diimpor" />
+          <button id="btn-clear-data" class="settings-row settings-row--btn settings-row--danger">
+            <div class="settings-row__info">
+              <span class="settings-row__label">Hapus semua data</span>
+              <span class="settings-row__desc">Tidak dapat dibatalkan</span>
+            </div>
+            <span class="settings-row__arrow" aria-hidden="true">›</span>
+          </button>
+        </div>
+
+        <div class="settings-section">
+          <h3 class="settings-section__title">Tentang</h3>
+          <div class="settings-row">
+            <div class="settings-row__info">
+              <span class="settings-row__label">Versi</span>
+              <span class="settings-row__desc">Medicine Reminder v1.0.0</span>
+            </div>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row__info">
+              <span class="settings-row__label">Data disimpan di perangkat</span>
+              <span class="settings-row__desc">Tidak dikirim ke server manapun</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: REFILL STOCK
+  ══════════════════════════════════════════ -->
+  <div id="modal-refill" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-refill-title">
+    <div class="modal__backdrop" id="modal-refill-backdrop"></div>
+    <div class="modal__sheet modal__sheet--sm">
+      <div class="modal__handle" aria-hidden="true"></div>
+
+      <div class="modal__header">
+        <h2 id="modal-refill-title" class="modal__title">Isi Ulang Stok</h2>
+        <button id="btn-modal-refill-close" class="modal__close" aria-label="Tutup modal">✕</button>
+      </div>
+
+      <form id="form-refill" class="form" novalidate autocomplete="off">
+        <input type="hidden" id="field-refill-medicine-id" />
+
+        <div class="form__group">
+          <label class="form__label" for="field-refill-amount">
+            Tambah stok <span id="refill-unit-label"></span> <span aria-hidden="true">*</span>
+          </label>
+          <input type="number" id="field-refill-amount" class="input"
+                 min="1" max="9999" step="1" placeholder="Contoh: 30"
+                 required aria-required="true" />
+          <p class="form__error hidden" id="err-refill-amount" role="alert">Masukkan jumlah yang valid.</p>
+        </div>
+
+        <div class="form__actions">
+          <button type="submit" class="btn btn--primary btn--full">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SNACKBAR / TOAST
+  ══════════════════════════════════════════ -->
+  <div id="snackbar" class="snackbar hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- ══════════════════════════════════════════
+       CONFIRM DIALOG
+  ══════════════════════════════════════════ -->
+  <div id="modal-confirm" class="modal hidden" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-desc">
+    <div class="modal__backdrop"></div>
+    <div class="modal__dialog">
+      <h3 id="confirm-title" class="modal__dialog-title">Konfirmasi</h3>
+      <p id="confirm-desc" class="modal__dialog-desc">Apakah kamu yakin?</p>
+      <div class="modal__dialog-actions">
+        <button id="btn-confirm-cancel" class="btn btn--ghost">Batal</button>
+        <button id="btn-confirm-ok" class="btn btn--danger">Ya, Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCRIPTS
+  ══════════════════════════════════════════ -->
+  <script src="./js/database.js"></script>
+  <script src="./js/notification.js"></script>
+  <script src="./js/reminder.js"></script>
+  <script src="./js/app.js"></script>
+
+</body>
+</html>
